@@ -28,35 +28,6 @@ def initGui():
     makeTrackbar(winName,'closeSteps')
     makeTrackbar(winName,'cornerK')
 
-def hsv(img):
-    return cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
-
-def blackThresh(img):
-    channels = cv2.split(img)
-    sat = channels[1]
-    sat = cv2.threshold(sat,blackSThresh,255,
-                        cv2.THRESH_BINARY_INV)[1]
-    val = channels[2]
-    val = cv2.threshold(val,blackVThresh,255,
-                        cv2.THRESH_BINARY_INV)[1]
-    return cv2.bitwise_and(sat,val)
-
-def holeOpen(img):
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-    return cv2.morphologyEx(img,cv2.MORPH_OPEN,kernel,
-                            iterations=openSteps)
-
-def holeClose(img):
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-    return cv2.morphologyEx(img,cv2.MORPH_CLOSE,kernel,
-                            iterations=closeSteps)
-
-def corners(img):
-    corners = cv2.cornerHarris(img,10,5,cornerK/255.0)
-    corners = cv2.threshold(corners,1,255, cv2.THRESH_BINARY)[1]
-    # img = cv2.convertScaleAbs(img)
-    return (img,corners)
-
 # From http://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
 def cartesian(arrays, out=None):
     """
@@ -108,28 +79,120 @@ def cartesian(arrays, out=None):
             out[j*m:(j+1)*m,1:] = out[0:m,1:]
     return out
 
-def overlayCorners(pair):
-    global x,y,coords,corners
-    (img,corners) = pair
-    img = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
+def hsv(orig,img):
+    return cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
 
+def blackThresh(orig,img):
+    channels = cv2.split(img)
+    sat = channels[1]
+    sat = cv2.threshold(sat,blackSThresh,255,
+                        cv2.THRESH_BINARY_INV)[1]
+    val = channels[2]
+    val = cv2.threshold(val,blackVThresh,255,
+                        cv2.THRESH_BINARY_INV)[1]
+    return cv2.bitwise_and(sat,val)
+
+def holeOpen(orig,img):
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+    return cv2.morphologyEx(img,cv2.MORPH_OPEN,kernel,
+                            iterations=openSteps)
+
+def holeClose(orig,img):
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+    return cv2.morphologyEx(img,cv2.MORPH_CLOSE,kernel,
+                            iterations=closeSteps)
+
+def corners(orig,img):
+    corners = cv2.cornerHarris(img,10,5,cornerK/255.0)
+    corners = cv2.threshold(corners,1,255, cv2.THRESH_BINARY)[1]
+    # img = cv2.convertScaleAbs(img)
     x = np.asarray(range(corners.shape[0]))
     y = np.asarray(range(corners.shape[1]))
     coords = cartesian([x,y])
-    for coord in coords[corners.flatten() > 1]:
-        cv2.circle(img,(coord[1],coord[0]),20,(0,0,255))
+    corners = [(coord[1],coord[0]) for coord in
+                coords[corners.flatten() > 1]]
+    return (img,corners)
+
+def overlayCorners(orig,pair):
+    (img,corners) = pair
+    img = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
+    for coord in corners:
+        cv2.circle(img,(coord[0],coord[1]),20,(0,0,255))
     return img
+
+def extractRects(orig,pair):
+    (img,corners) = pair
+    def isHoriz(p1,p2):
+        dx = abs(p2[0] - p1[0])
+        dy = abs(p2[1] - p1[1])
+        return dy < 0.1*dx
+    def isVert(p1,p2):
+        dx = abs(p2[0] - p1[0])
+        dy = abs(p2[1] - p1[1])
+        return dx < 0.1*dy
+    def rects():
+        quads = cartesian(cartesian(corners,corners),
+                          cartesian(corners,corners))
+        quadsT = quads.transpose()
+        inds = np.asarray(range(len(corners)))
+        inds = cartesian(cartesian(inds,inds),cartesian(inds,inds))
+        indsT = inds.transpose()
+        validInds = np.asarray([True] * inds.shape[0])
+        for i in range(4):
+            for j in range(4):
+                if i != j:
+                    nextStep = (indsT[i] != indsT[j])
+                    validInds = validInds.logical_and(nextStep)
+        for i in xrange(len(corners)):
+            for j in xrange(len(corners)):
+                if i == j:
+                    continue
+                if corners[i][0] >= corners[j][0]:
+                    continue
+                if not isHoriz(corners[i],corners[j]):
+                    continue
+                for k in xrange(len(corners)):
+                    if k in [i,j]:
+                        continue
+                    if corners[j][1] >= corners[k][1]:
+                        continue
+                    if not isVert(corners[j],corners[k]):
+                        continue
+                    for l in xrange(len(corners)):
+                        if l in [i,j,k]:
+                            continue
+                        if corners[k][0] <= corners[l][0]:
+                            continue
+                        if not isHoriz(corners[k],corners[l]):
+                            continue
+                        if not isVert(corners[i],corners[l]):
+                            continue
+                        top   = (corners[i][1] + corners[j][1])/2.0
+                        right = (corners[j][0] + corners[k][0])/2.0
+                        bot   = (corners[k][1] + corners[l][1])/2.0
+                        left  = (corners[l][0] + corners[i][0])/2.0
+                        yield ((left,top),(right,bot))
+    return (img,list(rects()))
+
+def overlayRects(orig,pair):
+    (img,rects) = pair
+    orig = orig.copy()
+
+    for rect in rects:
+        cv2.rectangle(orig,rect[0],rect[1],(0,0,255))
+    return orig
 
 def pipeline(fs):
     def fn(x):
+        x0 = x
         for f in fs:
-            x = f(x)
+            x = f(x0,x)
         return x
     return fn
 
 if __name__ == '__main__':
     import imstream
     process = [hsv,blackThresh,holeOpen,holeClose,corners,
-               overlayCorners]
+               overlayCorners]#extractRects,overlayRects]
     imstream.runStream(pipeline(process), winName=winName, init=initGui)
 
