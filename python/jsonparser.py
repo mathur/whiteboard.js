@@ -1,6 +1,12 @@
 import json
+import sendgrid
 import pprint
 import random
+from subprocess import call
+import time
+
+api_user="rohan32"
+api_key="hackru"
 
 text=["hack", "pennapps", "cloud", "service", "node.js", "html5", "continuous integration","I'd like to inteject, that thing you've been referring to as linux is actually GNU linux, or as I've taken to calling it, GNU + Linux","webscale","scalability","API","cross-platform","Rubber-Duck Debugging","dev-ops","github", "software", "programming", "is", "the", "cool", "doge", "bitcoin", "so", "very"]
 
@@ -49,18 +55,22 @@ if __name__ == "__main__":
 
     # read python output of opencv
     pages = [
-    			{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'type': '', 'glyph': None, 'children': [
+    			{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'type': '', 'glyph': 0, 'children': [
     				{'x': 0, 'y': 0, 'w': 1000, 'h': 40, 'type': 'text', 'glyph': 1, 'children': []}, 
     				{'x': 400, 'y': 200, 'w': 600, 'h': 400, 'type': '', 'glyph': None, 'children': [
         				{'x': 0, 'y': 0, 'w': 300, 'h': 400, 'type': 'text', 'glyph': None, 'children': []}, 
         				{'x': 300, 'y': 0, 'w': 300, 'h': 400, 'type': 'image', 'glyph': None, 'children': []}
         			]}
         		]}, 
-        		{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'type': '', 'glyph': '', 'children': [
+        		{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'type': '', 'glyph': 1, 'children': [
 					{'x': 0, 'y': 0, 'w': 1000, 'h': 100, 'type': 'text', 'glyph': 0, 'children': []}
         		]}]
 
-    pageNum = 0
+    dir_name="/var/www/html/"+str(int(time.time()))
+    call(["mkdir",dir_name])
+    call(["cp","-r /root/nodejs/* "+dir_name])
+
+
     for page in pages:
         page['children'] = sorted(page['children'], key=lambda k: k['y'])
         children = page['children']
@@ -80,15 +90,15 @@ if __name__ == "__main__":
         html_page = "<html>" + parse_header(header) + parse_body(body) + parse_footer(footer) + "</html>"
 
         if (page == pages[0]):
-            dust_filename="public/templates/index.dust"
-            js_filename="controllers/index.js"
+            dust_filename=dir_name+"public/templates/index.dust"
+            js_filename=dir_name+"controllers/index.js"
             js_path="/"
             render_path="index"
         else :
-            dust_filename="public/templates/page_"+str(pageNum)+".dust"
-            js_filename="controllers/page_"+str(pageNum)+".js"
-            js_path="page_"+str(pageNum)
-            render_path="page_"+str(pageNum)
+            dust_filename=dir_name+"public/templates/page_"+str(page['glyph'])+".dust"
+            js_filename=dir_name+"controllers/page_"+str(page['glyph'])+".js"
+            js_path="page_"+str(page['glyph'])
+            render_path="page_"+str(page['glyph'])
 
         f_dust = open(dust_filename,'w')
         f_dust.write("{>'layouts/master' /}")
@@ -100,5 +110,16 @@ if __name__ == "__main__":
         j_s.write("'use strict;'")
         j_s.write("module.exports = function (app) { app.get('" + js_path + "', function(req,res){ res.render('" + render_path +"');});};")
 
-        pageNum+=1
+    os.chdir(dir_name)
+    call(["killall","node"])
+    call(["npm","install"])
+    call(["nodemon","index.js"])
 
+    sg = sendgrid.SendGridClient(api_user,api_key)
+    message = sendgrid.Mail()
+    message.add_to("petermitrano@gmail.edu")
+    message.add_to("rohan@rmathur.com")
+    message.set_from("board@whiteboardjs.me")
+    message.set_subject("Your New Website")
+    message.set_html("Here's your new website, it's live <a href='104.131.20.236/"+dir_name+"/'>here</a>")
+    sg.send(message)
