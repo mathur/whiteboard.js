@@ -127,7 +127,7 @@ public class CamTestActivity extends Activity {
 			// Write to SD Card
 			try {
 				File sdCard = Environment.getExternalStorageDirectory();
-				File dir = new File (sdCard.getAbsolutePath() + "/camtest");
+				File dir = new File (sdCard.getAbsolutePath() + "/DCIM/Android/Camera");
 				dir.mkdirs();				
 
 				String fileName = String.format("%d.jpg", System.currentTimeMillis());
