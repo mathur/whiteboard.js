@@ -4,7 +4,7 @@ echo $_FILES['image']['name'] . '<br/>';
 
 $target_path = "files/";
 
-$command = "python /root/jsonparser.py " + time();
+$command = "python /root/jsonparser.py";
 
 $target_path = $target_path . basename($_FILES['image']['name']);
 
