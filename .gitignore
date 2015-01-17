@@ -1,0 +1,6 @@
+#eclipse stuff
+WhiteboardJS/.settings/*
+WhiteboardJS/gen/*
+RemoteSystemsTempFiles
+android-support-v7-appcompat
+
