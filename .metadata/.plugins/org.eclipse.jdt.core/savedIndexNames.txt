@@ -1,0 +1,10 @@
+INDEX VERSION 1.126+/home/peter/Projects/whiteboardjs/.metadata/.plugins/org.eclipse.jdt.core
+3610414493.index
+1377251446.index
+1686609823.index
+1079758423.index
+269652082.index
+3439388626.index
+2568459134.index
+385686932.index
+2577301940.index
