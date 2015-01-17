@@ -2,16 +2,14 @@ package com.whiteboard.js;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.StringTokenizer;
 
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.util.EntityUtils;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -50,25 +48,20 @@ public class UploadActivity extends Activity {
 		btnUpload = (Button) findViewById(R.id.btnUpload);
 		progressBar = (ProgressBar) findViewById(R.id.progressBar);
 		imgPreview = (ImageView) findViewById(R.id.imgPreview);
-
+		btnUpload.setEnabled(true);
+		
 		Intent i = this.getIntent();
 		picNum = i.getIntExtra("picNum", 0);
-		Log.e(TAG,"picnum="+picNum);
-
-		if (MainActivity.folderUri != null) {
-			// Displaying the image on the screen
-			previewMedia();
-		} else {
-			Toast.makeText(getApplicationContext(),
-					"Sorry, file path is missing!", Toast.LENGTH_LONG).show();
-		}
+		Log.e(TAG, "picnum=" + picNum);
 
 		btnUpload.setOnClickListener(new View.OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
 				// uploading the file to server
-				new UploadFileToServer().execute();
+				for (int i = 1; i <= picNum; i++) {
+					new UploadFileToServer(i,picNum).execute();
+				}
 			}
 		});
 
@@ -77,7 +70,7 @@ public class UploadActivity extends Activity {
 	/**
 	 * Displaying captured image on the screen
 	 * */
-	private void previewMedia() {
+	private void previewMedia(int i) {
 		// Checking whether captured media is image
 		imgPreview.setVisibility(View.VISIBLE);
 		// bimatp factory
@@ -89,7 +82,7 @@ public class UploadActivity extends Activity {
 		// TODO: show all the pictures
 		final Bitmap bitmap = BitmapFactory
 				.decodeFile(MainActivity.folderUri.getPath() + File.separator
-						+ "IMG_0.jpg", options);
+						+ "IMG_" + i + ".jpg", options);
 		imgPreview.setImageBitmap(bitmap);
 	}
 
@@ -97,9 +90,18 @@ public class UploadActivity extends Activity {
 	 * Uploading the file to server
 	 * */
 	private class UploadFileToServer extends AsyncTask<Void, Integer, String> {
+
+		private int i;
+
+		public UploadFileToServer(int i, int picNum) {
+			this.i = i;
+		}
+
 		@Override
 		protected void onPreExecute() {
 			// setting progress bar to zero
+			previewMedia(i);
+			btnUpload.setEnabled(false);
 			progressBar.setProgress(0);
 			super.onPreExecute();
 		}
@@ -139,12 +141,11 @@ public class UploadActivity extends Activity {
 						});
 
 				// send all files
-				for (int i = 0; i < picNum; i++) {
-					File sourceFile = new File(MainActivity.folderUri.getPath()
-							+ File.separator + "IMG_"+i+".jpg");
-					Log.e(TAG,"adding image "+sourceFile.getPath());
-					entity.addPart("image", new FileBody(sourceFile));
-				}
+
+				File sourceFile = new File(MainActivity.folderUri.getPath()
+						+ File.separator + "IMG_" + picNum + ".jpg");
+				Log.e(TAG, "adding image " + sourceFile.getPath());
+				entity.addPart("image", new FileBody(sourceFile));
 
 				totalSize = entity.getContentLength();
 				httppost.setEntity(entity);
@@ -166,7 +167,7 @@ public class UploadActivity extends Activity {
 			} catch (IOException e) {
 				responseString = e.toString() + " IOException";
 			}
-
+			
 			return responseString;
 
 		}
@@ -174,14 +175,21 @@ public class UploadActivity extends Activity {
 		@Override
 		protected void onPostExecute(String result) {
 			Log.e(TAG, "Response from server: " + result);
-
 			// showing the server response in an alert dialog
-			showAlert(result);
-
+			
+			//run on last image
+			if (i==picNum){
+				showAlert(result);
+				// delete the image files
+				File imageDirectory = new File(MainActivity.folderUri.getPath());
+				String[] images = imageDirectory.list();
+				for (int i=0;i<images.length;i++){
+					File img = new File(images[i]);
+					img.delete();				
+				}
+			}		
 			super.onPostExecute(result);
-
-			// delete the image files
-
+			
 		}
 
 	}
