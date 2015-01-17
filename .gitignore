@@ -6,7 +6,7 @@ android-support-v7-appcompat
 .metadata
 
 #nodejs stuff
-nodejs_boilerplate/.idea/*
-nodejs_boilerplate/.build/*
-nodejs_boilerplate/node_modules/*
+nodejs/.idea/*
+nodejs/.build/*
+nodejs/node_modules/*
 *.iml
