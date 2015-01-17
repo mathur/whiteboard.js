@@ -4,8 +4,6 @@ echo $_FILES['image']['name'] . '<br/>';
 
 $target_path = "files/";
 
-$command = "python /root/jsonparser.py";
-
 $target_path = $target_path . basename($_FILES['image']['name']);
 
 try {
@@ -15,9 +13,6 @@ try {
 
     echo "The file " . basename($_FILES['image']['name']) .
     " has been uploaded";
-
-    string exec ( string $command [, array &$output [, int &$return_var ]] )
-
 } catch (Exception $e) {
     die('File did not upload: ' . $e->getMessage());
 }
