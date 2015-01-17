@@ -26,11 +26,10 @@ public class MainActivity extends Activity {
 	private static final int CAMERA_CAPTURE_IMAGE_REQUEST_CODE = 100;
 
 	public static final int MEDIA_TYPE_IMAGE = 1;
-	private static int picNum = 0; // reset this when upload is made
-
-	private Uri folderUri; // file url to image directory
-
+	private static int picNum = 1; // reset this when upload is made
 	private Button btnCapturePicture;
+	
+	public static Uri folderUri; // file url to image directory
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -84,7 +83,7 @@ public class MainActivity extends Activity {
 	private void captureImage() {
 		Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
-		Uri fileUri = getOutputMediaFileUri(MEDIA_TYPE_IMAGE);
+		Uri fileUri = getOutputMediaFileUri();
 		
 		//pass the file name and store the image
 		intent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
@@ -138,8 +137,8 @@ public class MainActivity extends Activity {
 						case DialogInterface.BUTTON_NEGATIVE:
 							// successfully captured the image
 							// launching upload activity
-							picNum = 0; // reset pic num
-							launchUploadActivity(true);
+							launchUploadActivity();
+							picNum = 1; // reset pic num
 							break;
 						}
 					}
@@ -168,10 +167,9 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	private void launchUploadActivity(boolean isImage) {
+	private void launchUploadActivity() {
 		Intent i = new Intent(MainActivity.this, UploadActivity.class);
-		i.putExtra("folderPath", folderUri.getPath());
-		i.putExtra("isImage", isImage);
+		i.putExtra("picNum", picNum);
 		startActivity(i);
 	}
 
@@ -182,14 +180,14 @@ public class MainActivity extends Activity {
 	/**
 	 * Creating file uri to store image
 	 */
-	public Uri getOutputMediaFileUri(int type) {
-		return Uri.fromFile(getOutputMediaFile(type));
+	public Uri getOutputMediaFileUri() {
+		return Uri.fromFile(getOutputMediaFile());
 	}
 
 	/**
 	 * returning image
 	 */
-	private File getOutputMediaFile(int type) {
+	private static File getOutputMediaFile() {
 
 		// External sdcard location
 		File mediaStorageDir = new File(
@@ -209,14 +207,8 @@ public class MainActivity extends Activity {
 		folderUri = Uri.fromFile(mediaStorageDir);
 		
 		// Create a media file name
-		File mediaFile;
-		if (type == MEDIA_TYPE_IMAGE) {
-			mediaFile = new File(mediaStorageDir.getPath() + File.separator
+		File mediaFile = new File(mediaStorageDir.getPath() + File.separator
 					+ "IMG_" + picNum + ".jpg");
-		} else {
-			return null;
-		}
-
 		return mediaFile;
 	}
 }

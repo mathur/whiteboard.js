@@ -36,10 +36,10 @@ public class UploadActivity extends Activity {
 	private static final String TAG = MainActivity.class.getSimpleName();
 
 	private ProgressBar progressBar;
-	private String folderPath = null;
 	private TextView txtPercentage;
 	private ImageView imgPreview;
 	private Button btnUpload;
+	private int picNum;
 	long totalSize = 0;
 
 	@Override
@@ -51,13 +51,11 @@ public class UploadActivity extends Activity {
 		progressBar = (ProgressBar) findViewById(R.id.progressBar);
 		imgPreview = (ImageView) findViewById(R.id.imgPreview);
 
-		// Receiving the data from previous activity
-		Intent i = getIntent();
+		Intent i = this.getIntent();
+		picNum = i.getIntExtra("picNum", 0);
+		Log.e(TAG,"picnum="+picNum);
 
-		// image path that is captured in previous activity
-		folderPath = i.getStringExtra("folderPath");
-
-		if (folderPath != null) {
+		if (MainActivity.folderUri != null) {
 			// Displaying the image on the screen
 			previewMedia();
 		} else {
@@ -89,8 +87,9 @@ public class UploadActivity extends Activity {
 		options.inSampleSize = 8;
 		// show the first image
 		// TODO: show all the pictures
-		final Bitmap bitmap = BitmapFactory.decodeFile(folderPath
-				+ File.separator + "IMG_0.jpg", options);
+		final Bitmap bitmap = BitmapFactory
+				.decodeFile(MainActivity.folderUri.getPath() + File.separator
+						+ "IMG_0.jpg", options);
 		imgPreview.setImageBitmap(bitmap);
 	}
 
@@ -139,39 +138,33 @@ public class UploadActivity extends Activity {
 							}
 						});
 
-				// we need an array of files
-				ArrayList<File> images = new ArrayList<File>();
-				for (int i = 0; i < images.size(); i++) {
-					// Adding file data to http body
-					String imagePath = folderPath + File.separator + "IMG_" + i
-							+ ".jpg";
-					Log.e(TAG,"adding image "+imagePath);
-					File sourceFile = new File(imagePath);
-					//entity.addPart("IMG_" + i, new FileBody(sourceFile));
+				// send all files
+				for (int i = 0; i < picNum; i++) {
+					File sourceFile = new File(MainActivity.folderUri.getPath()
+							+ File.separator + "IMG_"+i+".jpg");
+					Log.e(TAG,"adding image "+sourceFile.getPath());
+					entity.addPart("image", new FileBody(sourceFile));
 				}
-				
-				entity.addPart("image", new FileBody(sourceFile));
 
 				totalSize = entity.getContentLength();
 				httppost.setEntity(entity);
 
 				// Making server call
 				HttpResponse response = httpclient.execute(httppost);
-				HttpEntity r_entity = response.getEntity();
 
 				int statusCode = response.getStatusLine().getStatusCode();
 				if (statusCode == 200) {
 					// Server response
-					responseString = EntityUtils.toString(r_entity);
+					responseString = "Success!";
 				} else {
 					responseString = "Error occurred! Http Status Code: "
 							+ statusCode;
 				}
 
 			} catch (ClientProtocolException e) {
-				responseString = e.toString()+" ClientProtocolException";
+				responseString = e.toString() + " ClientProtocolException";
 			} catch (IOException e) {
-				responseString = e.toString()+" IOException";
+				responseString = e.toString() + " IOException";
 			}
 
 			return responseString;
@@ -187,10 +180,8 @@ public class UploadActivity extends Activity {
 
 			super.onPostExecute(result);
 
-			// return the user to the main page
-			Intent returnToMain = new Intent(UploadActivity.this,
-					MainActivity.class);
-			startActivity(returnToMain);
+			// delete the image files
+
 		}
 
 	}
