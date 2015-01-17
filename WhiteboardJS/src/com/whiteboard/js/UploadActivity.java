@@ -1,9 +1,8 @@
 package com.whiteboard.js;
 
-import com.whiteboard.js.AndroidMultiPartEntity.ProgressListener;
-
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -11,7 +10,6 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.mime.content.FileBody;
-import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 
@@ -21,8 +19,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -33,12 +29,14 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.whiteboard.js.AndroidMultiPartEntity.ProgressListener;
+
 public class UploadActivity extends Activity {
 	// LogCat tag
 	private static final String TAG = MainActivity.class.getSimpleName();
 
 	private ProgressBar progressBar;
-	private String filePath = null;
+	private String folderPath = null;
 	private TextView txtPercentage;
 	private ImageView imgPreview;
 	private Button btnUpload;
@@ -57,9 +55,9 @@ public class UploadActivity extends Activity {
 		Intent i = getIntent();
 
 		// image path that is captured in previous activity
-		filePath = i.getStringExtra("filePath");
+		folderPath = i.getStringExtra("folderPath");
 
-		if (filePath != null) {
+		if (folderPath != null) {
 			// Displaying the image on the screen
 			previewMedia();
 		} else {
@@ -89,7 +87,10 @@ public class UploadActivity extends Activity {
 		// down sizing image as it throws OutOfMemory Exception for larger
 		// images
 		options.inSampleSize = 8;
-		final Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
+		// show the first image
+		// TODO: show all the pictures
+		final Bitmap bitmap = BitmapFactory.decodeFile(folderPath
+				+ File.separator + "IMG_0.jpg", options);
 		imgPreview.setImageBitmap(bitmap);
 	}
 
@@ -138,9 +139,17 @@ public class UploadActivity extends Activity {
 							}
 						});
 
-				File sourceFile = new File(filePath);
-
-				// Adding file data to http body
+				// we need an array of files
+				ArrayList<File> images = new ArrayList<File>();
+				for (int i = 0; i < images.size(); i++) {
+					// Adding file data to http body
+					String imagePath = folderPath + File.separator + "IMG_" + i
+							+ ".jpg";
+					Log.e(TAG,"adding image "+imagePath);
+					File sourceFile = new File(imagePath);
+					//entity.addPart("IMG_" + i, new FileBody(sourceFile));
+				}
+				
 				entity.addPart("image", new FileBody(sourceFile));
 
 				totalSize = entity.getContentLength();
@@ -160,9 +169,9 @@ public class UploadActivity extends Activity {
 				}
 
 			} catch (ClientProtocolException e) {
-				responseString = e.toString();
+				responseString = e.toString()+" ClientProtocolException";
 			} catch (IOException e) {
-				responseString = e.toString();
+				responseString = e.toString()+" IOException";
 			}
 
 			return responseString;
@@ -177,6 +186,11 @@ public class UploadActivity extends Activity {
 			showAlert(result);
 
 			super.onPostExecute(result);
+
+			// return the user to the main page
+			Intent returnToMain = new Intent(UploadActivity.this,
+					MainActivity.class);
+			startActivity(returnToMain);
 		}
 
 	}
@@ -185,6 +199,9 @@ public class UploadActivity extends Activity {
 	 * Method to show alert dialog
 	 * */
 	private void showAlert(String message) {
+		message += "\n"
+				+ "You will receive an email shortly with your new website!";
+
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setMessage(message).setTitle("Response from Servers")
 				.setCancelable(false)

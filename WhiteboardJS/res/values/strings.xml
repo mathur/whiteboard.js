@@ -2,8 +2,9 @@
 <resources>
 
     <string name="app_name">Whiteboard.js</string>
-    <string name="btnTakePicture">Capture Image</string>
+    <string name="btnTakePicture">Capture Your Sketches!</string>
     <string name="or">(or)</string>
     <string name="btnUploadToServer">Upload to Server</string>
+    <string name="btnNextImage">Take Next Image</string>
 
 </resources>
