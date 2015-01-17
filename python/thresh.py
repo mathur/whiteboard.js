@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import json
 
 winName = 'threshold'
 
@@ -8,14 +9,20 @@ gaussianSize = 2
 redSThresh = 59
 redLowThresh = 151
 redHighThresh = 8
+yelLowThresh  = 15
+yelHighThresh = 30
+bluLowThresh  = 90
+bluHighThresh = 155
 
 openSteps = 0
-closeSteps = 11
+closeSteps = 7
 
 harrisSize = 10
 cornerK = 17
 
 clusterSize = 9
+
+polyApproxK = 80
 
 pipelineLen = 0
 pipelineSize = 0
@@ -31,16 +38,26 @@ def makeTrackbar(winName,var,maxVal=255):
                        assignVarCallback(var))
 
 def initGui():
-    makeTrackbar(winName,'gaussianSize')
+    # makeTrackbar(winName,'gaussianSize')
     makeTrackbar(winName,'redSThresh')
     makeTrackbar(winName,'redLowThresh')
     makeTrackbar(winName,'redHighThresh')
     # makeTrackbar(winName,'openSteps')
     makeTrackbar(winName,'harrisSize')
     makeTrackbar(winName,'closeSteps')
-    makeTrackbar(winName,'cornerK')
-    makeTrackbar(winName,'clusterSize')
+    makeTrackbar(winName,'polyApproxK')
+    # makeTrackbar(winName,'cornerK')
+    # makeTrackbar(winName,'clusterSize')
     makeTrackbar(winName,'pipelineLen',pipelineSize)
+
+def isHoriz(p1,p2):
+    dx = abs(p2[0] - p1[0])
+    dy = abs(p2[1] - p1[1])
+    return dy < 0.15*dx
+def isVert(p1,p2):
+    dx = abs(p2[0] - p1[0])
+    dy = abs(p2[1] - p1[1])
+    return dx < 0.15*dy
 
 # From http://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
 def cartesian(arrays, out=None):
@@ -100,19 +117,24 @@ def gaussian(orig,img):
     return cv2.GaussianBlur(img, (2*gaussianSize+1,2*gaussianSize+1), 
                             50)
 
-def redThresh(orig,img):
-    channels = cv2.split(img)
-    sat = channels[1]
-    sat = cv2.threshold(sat,redSThresh,255,
-                        cv2.THRESH_BINARY)[1]
-    hue = channels[0]
-    high,low = redHighThresh,redLowThresh
-    resultFn = cv2.bitwise_and if high > low else cv2.bitwise_or
-    hLow  = cv2.threshold(hue,high,255,
-                          cv2.THRESH_BINARY_INV)[1]
-    hHigh = cv2.threshold(hue,low,255,
-                          cv2.THRESH_BINARY)[1]
-    return cv2.bitwise_and(sat,resultFn(hLow,hHigh))
+def thresh(sThreshVar,lowHueVar,highHueVar):
+    def threshold(orig,img):
+        sThresh = globals()[sThreshVar]
+        lowHue = globals()[lowHueVar]
+        highHue = globals()[highHueVar]
+        channels = cv2.split(img)
+        sat = channels[1]
+        sat = cv2.threshold(sat,sThresh,255,
+                            cv2.THRESH_BINARY)[1]
+        hue = channels[0]
+        high,low = highHue,lowHue
+        resultFn = cv2.bitwise_and if high > low else cv2.bitwise_or
+        hLow  = cv2.threshold(hue,high,255,
+                            cv2.THRESH_BINARY_INV)[1]
+        hHigh = cv2.threshold(hue,low,255,
+                            cv2.THRESH_BINARY)[1]
+        return cv2.bitwise_and(sat,resultFn(hLow,hHigh))
+    return threshold
 
 def holeOpen(orig,img):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
@@ -124,127 +146,163 @@ def holeClose(orig,img):
     return cv2.morphologyEx(img,cv2.MORPH_CLOSE,kernel,
                             iterations=closeSteps)
 
-def corners(orig,img):
-    dim = (img.shape[0] + img.shape[1])/2.0
-    corners = cv2.cornerHarris(img,
-                               max(1,int(harrisSize/255.0*dim/5.0)),7,
-                               cornerK/255.0)
-    corners = cv2.threshold(corners,1,255, cv2.THRESH_BINARY)[1]
-    # img = cv2.convertScaleAbs(img)
-    x = np.asarray(range(corners.shape[0]))
-    y = np.asarray(range(corners.shape[1]))
-    coords = cartesian([x,y])
-    corners = np.asarray([(coord[1],coord[0]) for coord in
-                          coords[corners.flatten() > 1]])
-    def distSq(p1,p2):
-        dx = p2[0] - p1[0]
-        dy = p2[1] - p1[1]
-        return dx*dx + dy*dy
+def extractContours(orig,img):
+    return (img,cv2.findContours(img,cv2.RETR_TREE,
+                                 cv2.CHAIN_APPROX_SIMPLE))
 
-    print (img.shape)
-    maxDist = clusterSize/255.0 * (img.shape[0]+img.shape[1])/2.0
-    print (maxDist)
+def polyApprox(orig,pair):
+    (img,(contours,hierarchy)) = pair
+    hulls = (cv2.convexHull(c) for c in contours)
+    polys = (cv2.approxPolyDP(c,polyApproxK,True) for c in hulls)
+    contours = np.asarray(list(polys))
+    return (img,(contours,hierarchy))
 
-    i = 0
-    while i < len(corners):
-        thisInd = np.asarray([j <= i for j in
-                                range(len(corners))])
-        pt = corners[[i]*len(corners)].transpose()
-        noCluster = distSq(pt,corners.transpose()) > maxDist*maxDist
-        corners = corners[np.logical_or(thisInd,noCluster)]
+def buildHierarchy(orig,pair):
+    (img,(contours,hierarchy)) = pair
+    hierarchy = hierarchy[0]
 
-        i += 1
-    return (img,corners)
+    def readContentType(c):
+        # print ("Contents of " + str(c))
+        if c.shape[0] == 2:
+            if abs(c[0,0,0]-c[1,0,0]) > abs(c[0,0,1]-c[1,0,1]) :
+                return 'txt'
+            else:
+                return 'img'
+        return ''
 
-def overlayCorners(orig,pair):
+    def readGlyph(rect):
+        bluProcess = [gaussian,hsv,
+                      thresh('redSThresh','bluLowThresh','bluHighThresh'),
+                      holeOpen,holeClose,extractContours,polyApprox]
+        yelProcess = [gaussian,hsv,
+                      thresh('redSThresh','yelLowThresh','yelHighThresh'),
+                      holeOpen,holeClose,extractContours,polyApprox]
+        x = rect['x']
+        y = rect['y']
+        w = rect['width']
+        h = rect['height']
+        # print (str(x) + "," + str(y) + ": " + str(w) + ","  + str(h))
+        img = orig[y:y+h,x:x+w]
+        # cv2.imshow("img",img.copy())
+        # print (img.shape)
+
+        pipes = [bluProcess,yelProcess]
+        for i in range(len(pipes)):
+            conts = pipeline(pipes[i])(img)
+            which = ["blu","yel"][i]
+            # cv2.imshow(which,conts[0])
+            print ("Trying " + which)
+            print (conts)
+            conts = conts[1][0]
+            if conts != None and len(conts) != 0:
+                print (conts)
+                return (i,readContentType(conts[0]))
+        return (None,'')
+
+    def addGlyphs(rects,idGlyph = None):
+        if idGlyph == None:
+            rects = sorted(rects[0]['children'],key=lambda x:x['y'])
+            glyph = readGlyph(rects[0])[0]
+            return (addGlyphs(rects[1:],glyph),glyph)
+        else:
+            for r in rects:
+                if not ('children' in r) or len(r['children']) == 0:
+                    r['glyph'],r['div_type'] = readGlyph(r)
+                elif len(r['children']) == 1:
+                    child = r['children'][0]
+                    cont = contours[child['index']]
+                    if cont.shape[0] == 2:
+                        r['div_type'] = readContentType(cont);
+                        r['children'] = None
+                    else:
+                        r['children'] = addGlyphs(r['children'],idGlyph)
+                else:
+                    r['children'] = addGlyphs(r['children'],idGlyph)
+            return rects
+
+    def buildChildren(i):
+        while hierarchy[i][1] >= 0:
+            i = hierarchy[i][1]
+        rects = []
+        while i >= 0:
+            (x,y,w,h) = cv2.boundingRect(contours[i])
+            rect = {'index':i,'x':x,'y':y,'width':w,'height':h}
+            rect['div_type'] = 'div' if contours[i].shape[0] == 4 else \
+                            readContentType(contours[i])          
+            rect['glyph'] = None
+            j = hierarchy[i][2]
+            if j >= 0:
+                rect['children'] = buildChildren(j)
+            rects.append(rect)
+            i = hierarchy[i][0]
+        return rects
+
+    children = buildChildren(0)
+    children = addGlyphs(children)
+
+    return (img,(contours,hierarchy,children))
+
+def printHierarchy(orig,pair):
+    (img,(contours,hierarchy,obj)) = pair
+    print (repr(obj))
+    return (img,(contours,hierarchy))
+
+def drawHierarchy(orig,pair):
+    (img,(contours,hierarchy,obj)) = pair
+
     orig = orig.copy()
-    (img,corners) = pair
-    orig[img > 100] = [0,0,255]
-    for coord in corners:
-        cv2.circle(orig,(coord[0],coord[1]),20,(255,0,0),-1)
-    print(len(corners))
+
+    colors = [(0,255,0),(0,0,255),(255,0,255),(255,255,0)]
+
+    glyphs = [(255,0,0),(0,255,255)]
+
+    def draw(rects,i = 0):
+        children = []
+        for r in rects:
+            x = r['x']
+            y = r['y']
+            w = r['width']
+            h = r['height']
+            cv2.rectangle(orig,(x,y),(x+w,y+h),colors[i],thickness=-1)
+            if r['glyph'] != None:
+                ind = r['glyph']%len(glyphs)
+                cv2.rectangle(orig,(x,y),(x+w,y+h),glyphs[ind],thickness=30)
+            if r['div_type'] == 'img':
+                ind = (i+1)%len(colors)
+                cv2.circle(orig,(x+w/2,y+h/2),int(0.25*min(w,h)),
+                           colors[ind],thickness=30)
+            elif r['div_type'] == 'txt':
+                ind = (i+1)%len(colors)
+                cv2.rectangle(orig,(x+w/4,y+h/4),
+                              (x+(3*w)/4,y+(3*h)/4),
+                              colors[ind],thickness=30)
+            if 'children' in r and r['children'] != None:
+                children += r['children']
+        if len(children) > 0:
+            draw(children,(i+1)%len(colors))
+
+    draw(obj[0])
+
+    print (repr(obj))
+
     return orig
 
-def extractRects(orig,pair):
-    (img,corners) = pair
-    def isHoriz(p1,p2):
-        dx = abs(p2[0] - p1[0])
-        dy = abs(p2[1] - p1[1])
-        return dy < 0.1*dx
-    def isVert(p1,p2):
-        dx = abs(p2[0] - p1[0])
-        dy = abs(p2[1] - p1[1])
-        return dx < 0.1*dy
-
-    def rects(corners):
-        corners = np.asarray(corners)
-
-        inds = np.asarray(range(len(corners)))
-        print (str(len(inds)) + ": " + str(inds))
-        inds = cartesian([inds]*3)
-        indsT = inds.transpose()
-        validInds = np.asarray([True] * inds.shape[0])
-        for i in range(4):
-            for j in range(i+1,4):
-                nextStep = (indsT[i] != indsT[j])
-                validInds = np.logical_and(validInds,nextStep)
-        quads = corners[inds][validInds]
-        quadsT = quads.transpose()
-        validQuads = np.asarray([True] * quads.shape[0])
-        horiz = True
-        for i in range(4):
-            nxt = (i+1)%4
-            fn = isHoriz if horiz else isVert
-            ind = 0 if horiz else 1
-            compare = (lambda a,b: a >= b) if (i < 2) else \
-                      (lambda a,b: a <= b)
-            validEdge = np.logical_and(fn(quadsT[:,i],quadsT[:,nxt]),
-                                       compare(quadsT[ind,i],
-                                               quadsT[ind,nxt]))
-            validQuads = np.logical_and(validQuads,validEdge)
-            horiz = not horiz
-        return quads[validQuads]
-
-        # for i in xrange(len(corners)):
-        #     for j in xrange(len(corners)):
-        #         if i == j:
-        #             continue
-        #         if corners[i][0] >= corners[j][0]:
-        #             continue
-        #         if not isHoriz(corners[i],corners[j]):
-        #             continue
-        #         for k in xrange(len(corners)):
-        #             if k in [i,j]:
-        #                 continue
-        #             if corners[j][1] >= corners[k][1]:
-        #                 continue
-        #             if not isVert(corners[j],corners[k]):
-        #                 continue
-        #             for l in xrange(len(corners)):
-        #                 if l in [i,j,k]:
-        #                     continue
-        #                 if corners[k][0] <= corners[l][0]:
-        #                     continue
-        #                 if not isHoriz(corners[k],corners[l]):
-        #                     continue
-        #                 if not isVert(corners[i],corners[l]):
-        #                     continue
-        #                 top   = (corners[i][1] + corners[j][1])/2.0
-        #                 right = (corners[j][0] + corners[k][0])/2.0
-        #                 bot   = (corners[k][1] + corners[l][1])/2.0
-        #                 left  = (corners[l][0] + corners[i][0])/2.0
-        #                 yield ((left,top),(right,bot))
-    return (img,list(rects(corners)))
-
-def overlayRects(orig,pair):
-    (img,rects) = pair
+def drawContours(orig,pair):
+    (img,(contours,hierarchy)) = pair
     orig = orig.copy()
-
-    for rect in rects:
-        cv2.rectangle(orig,rect[0],rect[1],(0,0,255))
+    # print (hierarchy)
+    cv2.drawContours(orig,contours,-1,(0,255,0),thickness=10)
     return orig
 
 def pipeline(fs):
+    def fn(x):
+        x0 = x
+        for f in fs:
+            x = f(x0,x)
+        return x
+    return fn
+
+def globPipeline(fs):
     global pipelineLen,pipelineSize
     def fn(x):
         x0 = x
@@ -262,9 +320,11 @@ def pipeline(fs):
 
 if __name__ == '__main__':
     import imstream
-    process = [gaussian,hsv,redThresh,holeOpen,holeClose,corners,
-               # extractRects,overlayRects]
-               overlayCorners]
-    imstream.runStream(pipeline(process), winName=winName,
+    process = [gaussian,hsv,
+               thresh('redSThresh','redLowThresh','redHighThresh'),
+               holeOpen,holeClose,extractContours,polyApprox,buildHierarchy,
+               drawHierarchy]
+               # drawContours]
+    imstream.runStream(globPipeline(process), winName=winName,
                        init=initGui,filename='whiteboard.jpg')
 
