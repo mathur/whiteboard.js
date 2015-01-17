@@ -4,3 +4,9 @@ WhiteboardJS/gen/*
 RemoteSystemsTempFiles
 android-support-v7-appcompat
 .metadata
+
+#nodejs stuff
+nodejs_boilerplate/.idea/*
+nodejs_boilerplate/.build/*
+nodejs_boilerplate/node_modules/*
+*.iml

@@ -1,19 +1,15 @@
 package com.whiteboard.js;
 
-import com.whiteboard.js.AndroidMultiPartEntity.ProgressListener;
-
 import java.io.File;
 import java.io.IOException;
+import java.util.StringTokenizer;
 
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.mime.content.FileBody;
-import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.util.EntityUtils;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -21,8 +17,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -33,15 +27,17 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.whiteboard.js.AndroidMultiPartEntity.ProgressListener;
+
 public class UploadActivity extends Activity {
 	// LogCat tag
 	private static final String TAG = MainActivity.class.getSimpleName();
 
 	private ProgressBar progressBar;
-	private String filePath = null;
 	private TextView txtPercentage;
 	private ImageView imgPreview;
 	private Button btnUpload;
+	private int picNum;
 	long totalSize = 0;
 
 	@Override
@@ -52,27 +48,20 @@ public class UploadActivity extends Activity {
 		btnUpload = (Button) findViewById(R.id.btnUpload);
 		progressBar = (ProgressBar) findViewById(R.id.progressBar);
 		imgPreview = (ImageView) findViewById(R.id.imgPreview);
-
-		// Receiving the data from previous activity
-		Intent i = getIntent();
-
-		// image path that is captured in previous activity
-		filePath = i.getStringExtra("filePath");
-
-		if (filePath != null) {
-			// Displaying the image on the screen
-			previewMedia();
-		} else {
-			Toast.makeText(getApplicationContext(),
-					"Sorry, file path is missing!", Toast.LENGTH_LONG).show();
-		}
+		btnUpload.setEnabled(true);
+		
+		Intent i = this.getIntent();
+		picNum = i.getIntExtra("picNum", 0);
+		Log.e(TAG, "picnum=" + picNum);
 
 		btnUpload.setOnClickListener(new View.OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
 				// uploading the file to server
-				new UploadFileToServer().execute();
+				for (int i = 1; i <= picNum; i++) {
+					new UploadFileToServer(i,picNum).execute();
+				}
 			}
 		});
 
@@ -81,7 +70,7 @@ public class UploadActivity extends Activity {
 	/**
 	 * Displaying captured image on the screen
 	 * */
-	private void previewMedia() {
+	private void previewMedia(int i) {
 		// Checking whether captured media is image
 		imgPreview.setVisibility(View.VISIBLE);
 		// bimatp factory
@@ -89,7 +78,11 @@ public class UploadActivity extends Activity {
 		// down sizing image as it throws OutOfMemory Exception for larger
 		// images
 		options.inSampleSize = 8;
-		final Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
+		// show the first image
+		// TODO: show all the pictures
+		final Bitmap bitmap = BitmapFactory
+				.decodeFile(MainActivity.folderUri.getPath() + File.separator
+						+ "IMG_" + i + ".jpg", options);
 		imgPreview.setImageBitmap(bitmap);
 	}
 
@@ -97,9 +90,18 @@ public class UploadActivity extends Activity {
 	 * Uploading the file to server
 	 * */
 	private class UploadFileToServer extends AsyncTask<Void, Integer, String> {
+
+		private int i;
+
+		public UploadFileToServer(int i, int picNum) {
+			this.i = i;
+		}
+
 		@Override
 		protected void onPreExecute() {
 			// setting progress bar to zero
+			previewMedia(i);
+			btnUpload.setEnabled(false);
 			progressBar.setProgress(0);
 			super.onPreExecute();
 		}
@@ -138,9 +140,11 @@ public class UploadActivity extends Activity {
 							}
 						});
 
-				File sourceFile = new File(filePath);
+				// send all files
 
-				// Adding file data to http body
+				File sourceFile = new File(MainActivity.folderUri.getPath()
+						+ File.separator + "IMG_" + picNum + ".jpg");
+				Log.e(TAG, "adding image " + sourceFile.getPath());
 				entity.addPart("image", new FileBody(sourceFile));
 
 				totalSize = entity.getContentLength();
@@ -148,23 +152,22 @@ public class UploadActivity extends Activity {
 
 				// Making server call
 				HttpResponse response = httpclient.execute(httppost);
-				HttpEntity r_entity = response.getEntity();
 
 				int statusCode = response.getStatusLine().getStatusCode();
 				if (statusCode == 200) {
 					// Server response
-					responseString = EntityUtils.toString(r_entity);
+					responseString = "Success!";
 				} else {
 					responseString = "Error occurred! Http Status Code: "
 							+ statusCode;
 				}
 
 			} catch (ClientProtocolException e) {
-				responseString = e.toString();
+				responseString = e.toString() + " ClientProtocolException";
 			} catch (IOException e) {
-				responseString = e.toString();
+				responseString = e.toString() + " IOException";
 			}
-
+			
 			return responseString;
 
 		}
@@ -172,11 +175,21 @@ public class UploadActivity extends Activity {
 		@Override
 		protected void onPostExecute(String result) {
 			Log.e(TAG, "Response from server: " + result);
-
 			// showing the server response in an alert dialog
-			showAlert(result);
-
+			
+			//run on last image
+			if (i==picNum){
+				showAlert(result);
+				// delete the image files
+				File imageDirectory = new File(MainActivity.folderUri.getPath());
+				String[] images = imageDirectory.list();
+				for (int i=0;i<images.length;i++){
+					File img = new File(images[i]);
+					img.delete();				
+				}
+			}		
 			super.onPostExecute(result);
+			
 		}
 
 	}
@@ -185,6 +198,9 @@ public class UploadActivity extends Activity {
 	 * Method to show alert dialog
 	 * */
 	private void showAlert(String message) {
+		message += "\n"
+				+ "You will receive an email shortly with your new website!";
+
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setMessage(message).setTitle("Response from Servers")
 				.setCancelable(false)
