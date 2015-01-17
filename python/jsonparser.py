@@ -3,7 +3,6 @@ import sendgrid
 import pprint
 import random
 from subprocess import call
-import time
 
 api_user="rohan32"
 api_key="hackru"
@@ -18,9 +17,9 @@ def get_text_of_width(w,h):
 
 def create_div(rect, offset=(0,0)):
     div_string="<div>"
-    if (rect['type']=='text'):
+    if (rect['div_type']=='text'):
         div_string+=get_text_of_width(rect['w'],rect['h'])
-    elif (rect['type']=='image'):
+    elif (rect['div_type']=='image'):
         div_string+="<img alt='cats are awesome' src='http://placekitten.com/g/"+str(rect['w'])+"/"+str(rect['h'])+"' width="+str(rect['w'])+" height="+str(rect['h'])+" >"
 
     if (rect['glyph']!=None):
@@ -30,7 +29,7 @@ def create_div(rect, offset=(0,0)):
         div_string+=create_div(child)
     return div_string+"</div>"
 
-def parse_header(header):
+def parse_header(header):]''
     html_header="<header>"
     if (header!=""):
         html_header+=create_div(header)
@@ -54,22 +53,26 @@ if __name__ == "__main__":
     # call opencv program to analyze images
 
     # read python output of opencv
+
     pages = [
-    			{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'type': '', 'glyph': 0, 'children': [
-    				{'x': 0, 'y': 0, 'w': 1000, 'h': 40, 'type': 'text', 'glyph': 1, 'children': []}, 
-    				{'x': 400, 'y': 200, 'w': 600, 'h': 400, 'type': '', 'glyph': None, 'children': [
-        				{'x': 0, 'y': 0, 'w': 300, 'h': 400, 'type': 'text', 'glyph': None, 'children': []}, 
-        				{'x': 300, 'y': 0, 'w': 300, 'h': 400, 'type': 'image', 'glyph': None, 'children': []}
+    			{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'div_type': '', 'glyph': 0, 'children': [
+    				{'x': 0, 'y': 0, 'w': 1000, 'h': 40, 'div_type': 'text', 'glyph': 1, 'children': []}, 
+    				{'x': 400, 'y': 200, 'w': 600, 'h': 400, 'div_type': '', 'glyph': None, 'children': [
+        				{'x': 0, 'y': 0, 'w': 300, 'h': 400, 'div_type': 'text', 'glyph': None, 'children': []}, 
+        				{'x': 300, 'y': 0, 'w': 300, 'h': 400, 'div_type': 'image', 'glyph': None, 'children': []}
         			]}
         		]}, 
-        		{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'type': '', 'glyph': 1, 'children': [
-					{'x': 0, 'y': 0, 'w': 1000, 'h': 100, 'type': 'text', 'glyph': 0, 'children': []}
+        		{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'div_type': '', 'glyph': 1, 'children': [
+					{'x': 0, 'y': 0, 'w': 1000, 'h': 100, 'div_type': 'text', 'glyph': 0, 'children': []}
         		]}]
 
-    dir_name="/var/www/html/"+str(int(time.time()))
+    
+    dir_name="/var/www/html/"+str(sys.argv[1]) #str(int(time.time()))
+    print "Saving files in",dir_name
+
     call(["mkdir",dir_name])
     call(["cp","-r /root/nodejs/* "+dir_name])
-
+    print "Copying node..."
 
     for page in pages:
         page['children'] = sorted(page['children'], key=lambda k: k['y'])
@@ -110,11 +113,13 @@ if __name__ == "__main__":
         j_s.write("'use strict;'")
         j_s.write("module.exports = function (app) { app.get('" + js_path + "', function(req,res){ res.render('" + render_path +"');});};")
 
+    print "restarting nodemon..."
     os.chdir(dir_name)
     call(["killall","node"])
     call(["npm","install"])
     call(["nodemon","index.js"])
 
+    print "sending email..."
     sg = sendgrid.SendGridClient(api_user,api_key)
     message = sendgrid.Mail()
     message.add_to("petermitrano@gmail.edu")
