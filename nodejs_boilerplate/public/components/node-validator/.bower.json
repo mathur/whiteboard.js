@@ -1,0 +1,15 @@
+{
+  "name": "node-validator",
+  "homepage": "https://github.com/chriso/node-validator",
+  "version": "3.1.0",
+  "_release": "3.1.0",
+  "_resolution": {
+    "type": "version",
+    "tag": "3.1.0",
+    "commit": "5860279838bc20cae77ff253a69333af1109d273"
+  },
+  "_source": "git://github.com/chriso/node-validator.git",
+  "_target": "~3.1.0",
+  "_originalSource": "node-validator",
+  "_direct": true
+}
