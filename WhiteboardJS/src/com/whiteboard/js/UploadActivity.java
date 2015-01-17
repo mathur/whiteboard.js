@@ -59,9 +59,8 @@ public class UploadActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				// uploading the file to server
-				for (int i = 1; i <= picNum; i++) {
-					new UploadFileToServer(i,picNum).execute();
-				}
+				new UploadFileToServer(0,picNum).execute();
+				
 			}
 		});
 
@@ -80,6 +79,7 @@ public class UploadActivity extends Activity {
 		options.inSampleSize = 8;
 		// show the first image
 		// TODO: show all the pictures
+		Log.e(TAG,"IMAGE NUM"+i);
 		final Bitmap bitmap = BitmapFactory
 				.decodeFile(MainActivity.folderUri.getPath() + File.separator
 						+ "IMG_" + i + ".jpg", options);
@@ -143,7 +143,7 @@ public class UploadActivity extends Activity {
 				// send all files
 
 				File sourceFile = new File(MainActivity.folderUri.getPath()
-						+ File.separator + "IMG_" + picNum + ".jpg");
+						+ File.separator + "IMG_" + i + ".jpg");
 				Log.e(TAG, "adding image " + sourceFile.getPath());
 				entity.addPart("image", new FileBody(sourceFile));
 
@@ -188,6 +188,9 @@ public class UploadActivity extends Activity {
 					img.delete();				
 				}
 			}		
+			else {
+				new UploadFileToServer(++i,picNum).execute();
+			}
 			super.onPostExecute(result);
 			
 		}
