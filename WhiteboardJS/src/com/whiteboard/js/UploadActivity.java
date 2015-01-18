@@ -2,7 +2,6 @@ package com.whiteboard.js;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.StringTokenizer;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -25,7 +24,6 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.whiteboard.js.AndroidMultiPartEntity.ProgressListener;
 
@@ -49,7 +47,7 @@ public class UploadActivity extends Activity {
 		progressBar = (ProgressBar) findViewById(R.id.progressBar);
 		imgPreview = (ImageView) findViewById(R.id.imgPreview);
 		btnUpload.setEnabled(true);
-		
+
 		Intent i = this.getIntent();
 		picNum = i.getIntExtra("picNum", 0);
 		Log.e(TAG, "picnum=" + picNum);
@@ -59,8 +57,8 @@ public class UploadActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				// uploading the file to server
-				new UploadFileToServer(0,picNum).execute();
-				
+				new UploadFileToServer(1, picNum).execute();
+
 			}
 		});
 
@@ -79,11 +77,53 @@ public class UploadActivity extends Activity {
 		options.inSampleSize = 8;
 		// show the first image
 		// TODO: show all the pictures
-		Log.e(TAG,"IMAGE NUM"+i);
-		final Bitmap bitmap = BitmapFactory
-				.decodeFile(MainActivity.folderUri.getPath() + File.separator
-						+ "IMG_" + i + ".jpg", options);
+		Log.e(TAG, "IMAGE NUM" + i);
+		final Bitmap bitmap = BitmapFactory.decodeFile(
+				MainActivity.folderUri.getPath() + File.separator + "IMG_" + i
+						+ ".jpg", options);
 		imgPreview.setImageBitmap(bitmap);
+	}
+
+	/**
+	 * Uploading the file to server
+	 * */
+	private class FinishedUploads extends AsyncTask<Void, Void, String> {
+		@Override
+		protected void onPreExecute() {
+		}
+
+		@Override
+		protected String doInBackground(Void... params) {
+			String responseString = "Success!";
+
+			HttpClient httpclient = new DefaultHttpClient();
+			HttpPost httppost = new HttpPost(Config.FINISHED_UPLOAD_URL);
+			try {
+			    HttpResponse response = httpclient.execute(httppost);
+			    // write response to log
+			    Log.d("Http Post Response:", response.toString());
+			} catch (ClientProtocolException e) {
+			    // Log exception
+			    e.printStackTrace();
+			} catch (IOException e) {
+			    // Log exception
+			    e.printStackTrace();
+			}
+			
+			return responseString;
+		}
+
+		@Override
+		protected void onPostExecute(String result) {
+			showAlert(result);
+			// delete the image files
+			File imageDirectory = new File(MainActivity.folderUri.getPath());
+			String[] images = imageDirectory.list();
+			for (int i = 0; i < images.length; i++) {
+				File img = new File(images[i]);
+				img.delete();
+			}
+		}
 	}
 
 	/**
@@ -151,6 +191,7 @@ public class UploadActivity extends Activity {
 				httppost.setEntity(entity);
 
 				// Making server call
+				Log.e(TAG, "making request");
 				HttpResponse response = httpclient.execute(httppost);
 
 				int statusCode = response.getStatusLine().getStatusCode();
@@ -162,39 +203,33 @@ public class UploadActivity extends Activity {
 							+ statusCode;
 				}
 
+				Thread.sleep(1000);
+
 			} catch (ClientProtocolException e) {
 				responseString = e.toString() + " ClientProtocolException";
 			} catch (IOException e) {
 				responseString = e.toString() + " IOException";
+			} catch (Exception e) {
+				responseString = e.toString();
 			}
-			
+
 			return responseString;
 
 		}
 
 		@Override
 		protected void onPostExecute(String result) {
-			Log.e(TAG, "Response from server: " + result);
 			// showing the server response in an alert dialog
-			
-			//run on last image
-			if (i==picNum){
-				showAlert(result);
-				// delete the image files
-				File imageDirectory = new File(MainActivity.folderUri.getPath());
-				String[] images = imageDirectory.list();
-				for (int i=0;i<images.length;i++){
-					File img = new File(images[i]);
-					img.delete();				
-				}
-			}		
-			else {
-				new UploadFileToServer(++i,picNum).execute();
-			}
 			super.onPostExecute(result);
-			
-		}
 
+			// run on last image
+			if (i == picNum) {
+				new FinishedUploads().execute();
+			} else {
+				new UploadFileToServer(++i, picNum).execute();
+			}
+
+		}
 	}
 
 	/**
