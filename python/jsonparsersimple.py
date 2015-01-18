@@ -1,4 +1,5 @@
 import json
+import whiteboard
 import sys
 import sendgrid
 import pprint
@@ -54,19 +55,18 @@ if __name__ == "__main__":
     # call opencv program to analyze images
 
     # read python output of opencv
-
-    pages = [
-    			{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'div_type': '', 'glyph': 0, 'children': [
-    				{'x': 0, 'y': 0, 'w': 1000, 'h': 40, 'div_type': 'text', 'glyph': 1, 'children': []}, 
-    				{'x': 400, 'y': 200, 'w': 600, 'h': 400, 'div_type': '', 'glyph': None, 'children': [
-        				{'x': 400, 'y': 200, 'w': 300, 'h': 400, 'div_type': 'text', 'glyph': None, 'children': []}, 
-        				{'x': 700, 'y': 200, 'w': 300, 'h': 400, 'div_type': 'image', 'glyph': None, 'children': []}
-        			]}
-        		]}, 
-        		{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'div_type': '', 'glyph': 1, 'children': [
-					{'x': 0, 'y': 0, 'w': 1000, 'h': 100, 'div_type': 'text', 'glyph': 0, 'children': []}
-        		]}]
-
+  #  pages = [
+  #  			{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'div_type': '', 'glyph': 0, 'children': [
+  #  				{'x': 0, 'y': 0, 'w': 1000, 'h': 40, 'div_type': 'text', 'glyph': 1, 'children': []}, 
+  #  				{'x': 400, 'y': 200, 'w': 600, 'h': 400, 'div_type': '', 'glyph': None, 'children': [
+  #      				{'x': 400, 'y': 200, 'w': 300, 'h': 400, 'div_type': 'text', 'glyph': None, 'children': []}, 
+  #      				{'x': 700, 'y': 200, 'w': 300, 'h': 400, 'div_type': 'image', 'glyph': None, 'children': []}
+  #      			]}
+  #      		]}, 
+  #      		{'x': 0, 'y': 0, 'w': 1000, 'h': 900, 'div_type': '', 'glyph': 1, 'children': [
+  #      				{'x': 0, 'y': 0, 'w': 1000, 'h': 100, 'div_type': 'text', 'glyph': 0, 'children': []}
+  #      		]}]
+    pages = whiteboard.parse_whiteboard("/var/www/html/whiteboard.jpg")
     dir_name="/var/www/html/"+str(sys.argv[1]) #str(int(time.time()))
     print "Saving files in",dir_name
 
@@ -118,12 +118,12 @@ for page in pages:
     	call(["killall","node"])
     	call(["npm","install"])
     	call(["nodemon","index.js"])
-    print "sending email..."
-    sg = sendgrid.SendGridClient(api_user,api_key)
-    message = sendgrid.Mail()
-    message.add_to("petermitrano@gmail.edu")
-    message.add_to("rohan@rmathur.com")
-    message.set_from("board@whiteboardjs.me")
-    message.set_subject("Your New Website")
-    message.set_html("Here's your new website, it's live <a href='104.131.20.236/"+dir_name+"/'>here</a>")
-    sg.send(message)
+        print "sending email..."
+        sg = sendgrid.SendGridClient(api_user,api_key)
+        message = sendgrid.Mail()
+        message.add_to("petermitrano@gmail.edu")
+        message.add_to("rohan@rmathur.com")
+        message.set_from("board@whiteboardjs.me")
+        message.set_subject("Your New Website")
+        message.set_html("Here's your new website, it's live <a href='104.131.20.236/"+dir_name+"/'>here</a>")
+        sg.send(message)
