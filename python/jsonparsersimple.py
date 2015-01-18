@@ -67,14 +67,12 @@ if __name__ == "__main__":
 					{'x': 0, 'y': 0, 'w': 1000, 'h': 100, 'div_type': 'text', 'glyph': 0, 'children': []}
         		]}]
 
-""" 
     dir_name="/var/www/html/"+str(sys.argv[1]) #str(int(time.time()))
     print "Saving files in",dir_name
 
     call(["mkdir",dir_name])
     call(["cp","-r /root/nodejs/* "+dir_name])
     print "Copying node..."
-"""
 for page in pages:
         page['children'] = sorted(page['children'], key=lambda k: k['y'])
         children = page['children']
@@ -120,7 +118,6 @@ for page in pages:
     	call(["killall","node"])
     	call(["npm","install"])
     	call(["nodemon","index.js"])
-"""
     print "sending email..."
     sg = sendgrid.SendGridClient(api_user,api_key)
     message = sendgrid.Mail()
@@ -129,4 +126,4 @@ for page in pages:
     message.set_from("board@whiteboardjs.me")
     message.set_subject("Your New Website")
     message.set_html("Here's your new website, it's live <a href='104.131.20.236/"+dir_name+"/'>here</a>")
-    sg.send(message)"""
+    sg.send(message)
