@@ -1,5 +1,6 @@
 import cv2
 import time
+import gc
 
 def runStream(process = lambda x: x,
               fps = 30,
@@ -22,8 +23,7 @@ def runStream(process = lambda x: x,
         img = process(capture())
         if img.shape[0] > 640 or img.shape[1] > 480:
             factor = max(img.shape[0]/640.0,img.shape[1]/480.0)
-            img = cv2.resize(img,(int(img.shape[0]/factor),
-                                  int(img.shape[1]/factor)))
+            img = cv2.resize(img,(0,0),fx=(1.0/factor),fy=(1.0/factor))
         cv2.imshow(winName,img)
         if first:
             init()
@@ -33,6 +33,7 @@ def runStream(process = lambda x: x,
         #     print "Too Fast! %f < %f" %(spf,timeSoFar)
         if printTime:
             print 'time: ' + str(time.time()-loopStart)
+        gc.collect()
         key = cv2.waitKey(max(1,int(1000*(spf-timeSoFar))))
 
 if __name__ == '__main__':

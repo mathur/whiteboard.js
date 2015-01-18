@@ -1,4 +1,3 @@
-
 <?php
 echo $_FILES['image']['name'] . '<br/>';
 
@@ -11,9 +10,9 @@ try {
         throw new Exception('Could not move file');
     }
 
-    echo "The file " . basename($_FILES['image']['name']) .
-    " has been uploaded";
+    #exec('python /root/jsonparsersimple.py');
+
 } catch (Exception $e) {
-    die('File did not upload: ' . $e->getMessage());
+    die('An error occurred:' . $e->getMessage());
 }
 ?>
