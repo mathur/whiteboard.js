@@ -184,8 +184,8 @@ def buildHierarchy(orig,pair):
                       holeOpen,holeClose,extractContours,polyApprox]
         x = rect['x']
         y = rect['y']
-        w = rect['width']
-        h = rect['height']
+        w = rect['w']
+        h = rect['h']
         # print (str(x) + "," + str(y) + ": " + str(w) + ","  + str(h))
         img = orig[y:y+h,x:x+w]
         # cv2.imshow("img",img.copy())
@@ -232,7 +232,7 @@ def buildHierarchy(orig,pair):
         rects = []
         while i >= 0:
             (x,y,w,h) = cv2.boundingRect(contours[i])
-            rect = {'index':i,'x':x,'y':y,'width':w,'height':h}
+            rect = {'index':i,'x':x,'y':y,'w':w,'h':h}
             rect['class'] = None
             rect['div_type'] = 'div' if contours[i].shape[0] == 4 else \
                             readContentType(contours[i])          
@@ -257,15 +257,15 @@ def buildHierarchy(orig,pair):
             # print ("Pruning!")
             l1 = rect['x']
             t1 = rect['y']
-            b1 = t1 + rect['height']
-            r1 = l1 + rect['width']
+            b1 = t1 + rect['h']
+            r1 = l1 + rect['w']
             (l,t,b,r) = (min(l,l1),min(t,t1),max(b,b1),max(r,r1))
 
             if 'children' in rect and not (rect['children'] is None) \
                and len(rect['children']) == 1:
                 child = rect['children'][0]
-                if child['width']*child['height'] >= \
-                   0.8*rect['width']*rect['height']:
+                if child['w']*child['h'] >= \
+                   0.8*rect['w']*rect['h']:
                     rects[i] = child
                     (l2,t2,b2,r2) = prune(rects)
                     (l,t,b,r) = (min(l,l2),min(t,t2),
@@ -279,8 +279,8 @@ def buildHierarchy(orig,pair):
     children = addGlyphs(children)
     (l,t,b,r) = prune(children[0])
 
-    result = [{'glyph':children[1],'x':l,'y':t,'width':(r-l),
-               'height':(b-t),'div_type':'div','class':None,
+    result = [{'glyph':children[1],'x':l,'y':t,'w':(r-l),
+               'h':(b-t),'div_type':'div','class':None,
                'children':children[0]}]
 
     return (img,(contours,hierarchy,result))
@@ -304,8 +304,8 @@ def drawHierarchy(orig,pair):
         for r in rects:
             x = r['x']
             y = r['y']
-            w = r['width']
-            h = r['height']
+            w = r['w']
+            h = r['h']
             cv2.rectangle(orig,(x,y),(x+w,y+h),colors[i],thickness=-1)
             if r['glyph'] != None:
                 ind = r['glyph']%len(glyphs)
