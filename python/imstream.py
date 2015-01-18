@@ -1,5 +1,6 @@
 import cv2
 import time
+import gc
 
 def runStream(process = lambda x: x,
               fps = 30,
@@ -32,6 +33,7 @@ def runStream(process = lambda x: x,
         #     print "Too Fast! %f < %f" %(spf,timeSoFar)
         if printTime:
             print 'time: ' + str(time.time()-loopStart)
+        gc.collect()
         key = cv2.waitKey(max(1,int(1000*(spf-timeSoFar))))
 
 if __name__ == '__main__':

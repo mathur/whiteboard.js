@@ -11,8 +11,10 @@ redLowThresh = 151
 redHighThresh = 8
 yelLowThresh  = 15
 yelHighThresh = 30
-bluLowThresh  = 90
-bluHighThresh = 155
+bluLowThresh  = 105
+bluHighThresh = 120
+grnLowThresh  = 75
+grnHighThresh = 95
 
 openSteps = 0
 closeSteps = 7
@@ -177,6 +179,9 @@ def buildHierarchy(orig,pair):
         yelProcess = [gaussian,hsv,
                       thresh('redSThresh','yelLowThresh','yelHighThresh'),
                       holeOpen,holeClose,extractContours,polyApprox]
+        grnProcess = [gaussian,hsv,
+                      thresh('redSThresh','grnLowThresh','grnHighThresh'),
+                      holeOpen,holeClose,extractContours,polyApprox]
         x = rect['x']
         y = rect['y']
         w = rect['width']
@@ -186,15 +191,15 @@ def buildHierarchy(orig,pair):
         # cv2.imshow("img",img.copy())
         # print (img.shape)
 
-        pipes = [bluProcess,yelProcess]
+        pipes = [bluProcess,yelProcess,grnProcess]
         for i in range(len(pipes)):
             conts = pipeline(pipes[i])(img)
-            which = ["blu","yel"][i]
+            which = ["blu","yel","grn"][i]
             # cv2.imshow(which,conts[0])
             print ("Trying " + which)
-            print (conts)
             conts = conts[1][0]
-            if conts != None and len(conts) != 0:
+            if conts != None and len(conts) != 0 \
+               and conts[0].shape[0] in [2,4]:
                 print (conts)
                 return (i,readContentType(conts[0]))
         return (None,'')
@@ -252,9 +257,9 @@ def drawHierarchy(orig,pair):
 
     orig = orig.copy()
 
-    colors = [(0,255,0),(0,0,255),(255,0,255),(255,255,0)]
+    colors = [(0,0,255),(255,0,255),(255,255,0),(0,0,0)]
 
-    glyphs = [(255,0,0),(0,255,255)]
+    glyphs = [(255,0,0),(0,255,255),(0,255,0)]
 
     def draw(rects,i = 0):
         children = []
