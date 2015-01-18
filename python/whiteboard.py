@@ -24,7 +24,7 @@ cornerK = 17
 
 clusterSize = 9
 
-polyApproxK = 80
+polyApproxK = 40
 
 pipelineLen = 0
 pipelineSize = 0
@@ -205,7 +205,13 @@ def buildHierarchy(orig,pair):
         return (None,'')
 
     def addGlyphs(rects,idGlyph = None):
+        if rects == []:
+            return ([],None)
         if idGlyph == None:
+            print (rects)
+            if not ('children' in rects[0]) or rects[0]['w'] < 10 or\
+               rects[0]['h'] < 10:
+                return addGlyphs(rects[1:])
             rects = sorted(rects[0]['children'],key=lambda x:x['y'])
             glyph = readGlyph(rects[0])[0]
             return (addGlyphs(rects[1:],glyph),glyph)
@@ -364,6 +370,7 @@ def globPipeline(fs):
 wholeProcess = [gaussian,hsv,
                 thresh('redSThresh','redLowThresh','redHighThresh'),
                 holeOpen,holeClose,extractContours,polyApprox,
+                # drawContours]
                 buildHierarchy] 
 
 def extractStructure(img):
@@ -372,6 +379,17 @@ def extractStructure(img):
 def parseWhiteboard(filename):
     return extractStructure(cv2.imread(filename))
 
+def swallow(f):
+    def fn(x):
+        try: 
+            return f(x)
+        except:
+            import traceback
+            print (sys.exc_info()[0])
+            traceback.print_tb(sys.exc_info()[2])
+            return x
+    return fn
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1:
@@ -379,6 +397,6 @@ if __name__ == '__main__':
     else:
         import imstream
         pipe = globPipeline(wholeProcess + [printHierarchy,drawHierarchy])
-        imstream.runStream(pipe, winName=winName,
-                           init=initGui,filename='whiteboard.jpg')
+        imstream.runStream(swallow(pipe), winName=winName,
+                           init=initGui,filename='IMG_2.jpg')
 
