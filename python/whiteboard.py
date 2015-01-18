@@ -6,7 +6,7 @@ winName = 'threshold'
 
 gaussianSize = 2
 
-redSThresh = 59
+redSThresh = 55
 redLowThresh = 151
 redHighThresh = 8
 yelLowThresh  = 15
@@ -16,8 +16,8 @@ bluHighThresh = 120
 grnLowThresh  = 75
 grnHighThresh = 95
 
-openSteps = 0
-closeSteps = 7
+openSteps = 2
+closeSteps = 5
 
 harrisSize = 10
 cornerK = 17
@@ -196,11 +196,11 @@ def buildHierarchy(orig,pair):
             conts = pipeline(pipes[i])(img)
             which = ["blu","yel","grn"][i]
             # cv2.imshow(which,conts[0])
-            print ("Trying " + which)
+            # print ("Trying " + which)
             conts = conts[1][0]
-            if conts != None and len(conts) != 0 \
+            if not (conts is None) and len(conts) != 0 \
                and conts[0].shape[0] in [2,4]:
-                print (conts)
+                # print (conts)
                 return (i,readContentType(conts[0]))
         return (None,'')
 
@@ -218,7 +218,8 @@ def buildHierarchy(orig,pair):
                     cont = contours[child['index']]
                     if cont.shape[0] == 2:
                         r['div_type'] = readContentType(cont);
-                        r['children'] = None
+                        del r['children']
+                        # r['children'] = None
                     else:
                         r['children'] = addGlyphs(r['children'],idGlyph)
                 else:
@@ -242,15 +243,34 @@ def buildHierarchy(orig,pair):
             i = hierarchy[i][0]
         return rects
 
+    def prune(rects):
+        if type(rects) != list:
+            return
+        for i in range(len(rects)):
+            r = rects[i]
+            # print ("Pruning!")
+
+            if 'children' in r and r['children'] != None \
+               and len(r['children']) == 1:
+                child = r['children'][0]
+                if child['width']*child['height'] >= \
+                   1*r['width']*r['height']:
+                    rects[i] = child
+                    prune(rects)
+                    return
+            if 'children' in r:
+                prune(r['children'])
+
     children = buildChildren(0)
     children = addGlyphs(children)
+    prune(children[0])
 
     return (img,(contours,hierarchy,children))
 
 def printHierarchy(orig,pair):
     (img,(contours,hierarchy,obj)) = pair
     print (repr(obj))
-    return (img,(contours,hierarchy))
+    return (img,(contours,hierarchy,obj))
 
 def drawHierarchy(orig,pair):
     (img,(contours,hierarchy,obj)) = pair
@@ -288,7 +308,7 @@ def drawHierarchy(orig,pair):
 
     draw(obj[0])
 
-    print (repr(obj))
+    # print (repr(obj))
 
     return orig
 
@@ -323,13 +343,24 @@ def globPipeline(fs):
     pipelineLen = pipelineSize = len(fs)
     return fn
 
+wholeProcess = [gaussian,hsv,
+                thresh('redSThresh','redLowThresh','redHighThresh'),
+                holeOpen,holeClose,extractContours,polyApprox,
+                buildHierarchy] 
+
+def extractStructure(img):
+    return pipeline(wholeProcess)(img)[1][2]
+
+def parseWhiteboard(filename):
+    return extractStructure(cv2.imread(filename))
+
 if __name__ == '__main__':
-    import imstream
-    process = [gaussian,hsv,
-               thresh('redSThresh','redLowThresh','redHighThresh'),
-               holeOpen,holeClose,extractContours,polyApprox,buildHierarchy,
-               drawHierarchy]
-               # drawContours]
-    imstream.runStream(globPipeline(process), winName=winName,
-                       init=initGui,filename='whiteboard.jpg')
+    import sys
+    if len(sys.argv) > 1:
+        print (repr([parseWhiteboard(f) for f in sys.argv[1:]]))
+    else:
+        import imstream
+        pipe = globPipeline(wholeProcess + [printHierarchy,drawHierarchy])
+        imstream.runStream(pipe, winName=winName,
+                           init=initGui,filename='whiteboard3.jpg')
 
