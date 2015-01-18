@@ -67,7 +67,7 @@ if __name__ == "__main__":
 					{'x': 0, 'y': 0, 'w': 1000, 'h': 100, 'div_type': 'text', 'glyph': 0, 'children': []}
         		]}]
 
-    dir_name="/var/www/html/"+str(sys.argv[1]) #str(int(time.time()))
+    dir_name="/var/www/html/"+str(int(time.time()))
     print "Saving files in",dir_name
 
     call(["mkdir",dir_name])
