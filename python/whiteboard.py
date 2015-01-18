@@ -233,6 +233,7 @@ def buildHierarchy(orig,pair):
         while i >= 0:
             (x,y,w,h) = cv2.boundingRect(contours[i])
             rect = {'index':i,'x':x,'y':y,'width':w,'height':h}
+            rect['class'] = None
             rect['div_type'] = 'div' if contours[i].shape[0] == 4 else \
                             readContentType(contours[i])          
             rect['glyph'] = None
@@ -245,27 +246,44 @@ def buildHierarchy(orig,pair):
 
     def prune(rects):
         if type(rects) != list:
-            return
+            return (float('inf'),float('inf'),-float('inf'),
+                    -float('inf'))
+        l = float('inf')
+        t = float('inf')
+        b = -float('inf')
+        r = -float('inf')
         for i in range(len(rects)):
-            r = rects[i]
+            rect = rects[i]
             # print ("Pruning!")
+            l1 = rect['x']
+            t1 = rect['y']
+            b1 = t1 + rect['height']
+            r1 = l1 + rect['width']
+            (l,t,b,r) = (min(l,l1),min(t,t1),max(b,b1),max(r,r1))
 
-            if 'children' in r and r['children'] != None \
-               and len(r['children']) == 1:
-                child = r['children'][0]
+            if 'children' in rect and not (rect['children'] is None) \
+               and len(rect['children']) == 1:
+                child = rect['children'][0]
                 if child['width']*child['height'] >= \
-                   1*r['width']*r['height']:
+                   0.8*rect['width']*rect['height']:
                     rects[i] = child
-                    prune(rects)
-                    return
-            if 'children' in r:
-                prune(r['children'])
+                    (l2,t2,b2,r2) = prune(rects)
+                    (l,t,b,r) = (min(l,l2),min(t,t2),
+                                 max(b,b2),max(r,r2))
+            if 'children' in rect:
+                (l2,t2,b2,r2) = prune(rect['children'])
+                (l,t,b,r) = (min(l,l2),min(t,t2),max(b,b2),max(r,r2))
+        return (l,t,b,r)
 
     children = buildChildren(0)
     children = addGlyphs(children)
-    prune(children[0])
+    (l,t,b,r) = prune(children[0])
 
-    return (img,(contours,hierarchy,children))
+    result = [{'glyph':children[1],'x':l,'y':t,'width':(r-l),
+               'height':(b-t),'div_type':'div','class':None,
+               'children':children[0]}]
+
+    return (img,(contours,hierarchy,result))
 
 def printHierarchy(orig,pair):
     (img,(contours,hierarchy,obj)) = pair
@@ -306,7 +324,7 @@ def drawHierarchy(orig,pair):
         if len(children) > 0:
             draw(children,(i+1)%len(colors))
 
-    draw(obj[0])
+    draw(obj)
 
     # print (repr(obj))
 
@@ -362,5 +380,5 @@ if __name__ == '__main__':
         import imstream
         pipe = globPipeline(wholeProcess + [printHierarchy,drawHierarchy])
         imstream.runStream(pipe, winName=winName,
-                           init=initGui,filename='whiteboard3.jpg')
+                           init=initGui,filename='whiteboard.jpg')
 
