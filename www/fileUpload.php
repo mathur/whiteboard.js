@@ -13,7 +13,11 @@ try {
 
     echo "The file " . basename($_FILES['image']['name']) .
     " has been uploaded";
+
+    $command = escapeshellcmd('python /root/jsonparser.py');
+    $output = shell_exec($command);
+
 } catch (Exception $e) {
-    die('File did not upload: ' . $e->getMessage());
+    die('An error occurred:' . $e->getMessage());
 }
 ?>
