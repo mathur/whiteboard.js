@@ -22,8 +22,7 @@ def runStream(process = lambda x: x,
         img = process(capture())
         if img.shape[0] > 640 or img.shape[1] > 480:
             factor = max(img.shape[0]/640.0,img.shape[1]/480.0)
-            img = cv2.resize(img,(int(img.shape[0]/factor),
-                                  int(img.shape[1]/factor)))
+            img = cv2.resize(img,(0,0),fx=(1.0/factor),fy=(1.0/factor))
         cv2.imshow(winName,img)
         if first:
             init()
