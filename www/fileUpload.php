@@ -11,10 +11,7 @@ try {
         throw new Exception('Could not move file');
     }
 
-    exec('python /root/jsonparser.py');
-
-    echo "The file " . basename($_FILES['image']['name']) .
-    " has been uploaded";
+    exec('python /root/jsonparsersimple.py');
 
 } catch (Exception $e) {
     die('An error occurred:' . $e->getMessage());
