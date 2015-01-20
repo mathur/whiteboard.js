@@ -9,8 +9,8 @@ import os
 
 folder = "/"
 
-api_user="rohan32"
-api_key="hackru"
+#api_user="rohan32"
+#api_key="hackru"
 
 text=["hack", "pennapps", "cloud", "service", "node.js", "html5", "continuous integration","I'd like to inteject, that thing you've been referring to as linux is actually GNU linux, or as I've taken to calling it, GNU + Linux","webscale","scalability","API","cross-platform","Rubber-Duck Debugging","dev-ops","github", "software", "programming", "is", "the", "cool", "doge", "bitcoin", "so", "very"]
 
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     call(["mkdir",dir_name])
     os.system("rm -r " + dir_name + "/*")
-    os.system("cp -r /root/whiteboardjs/nodejs/* " + dir_name + "/")
+    #os.system("cp -r /root/whiteboardjs/nodejs/* " + dir_name + "/")
     #print "Copying node..."
     for page in pages:
 	page = page[0]
@@ -82,33 +82,33 @@ if __name__ == "__main__":
             f.write(html_page)
 	continue
 
-        if (page == pages[0]):
-            dust_filename=dir_name+"public/templates/index.dust"
-            js_filename=dir_name+"controllers/index.js"
-            js_path="/"
-            render_path="index"
-        else :
-            dust_filename=dir_name+"public/templates/page_"+str(page['glyph'])+".dust"
-            js_filename=dir_name+"controllers/page_"+str(page['glyph'])+".js"
-            js_path="page_"+str(page['glyph'])
-            render_path="page_"+str(page['glyph'])
+        #if (page == pages[0]):
+        #    dust_filename=dir_name+"public/templates/index.dust"
+        #    js_filename=dir_name+"controllers/index.js"
+        #    js_path="/"
+        #    render_path="index"
+        #else :
+        #    dust_filename=dir_name+"public/templates/page_"+str(page['glyph'])+".dust"
+        #    js_filename=dir_name+"controllers/page_"+str(page['glyph'])+".js"
+        #    js_path="page_"+str(page['glyph'])
+        #    render_path="page_"+str(page['glyph'])
 
-        f_dust = open(dust_filename,'w')
-        f_dust.write("{>'layouts/master' /}")
-        f_dust.write("{<body}")
-        f_dust.write(html_page)
-        f_dust.write("{/body}")
+        #f_dust = open(dust_filename,'w')
+        #f_dust.write("{>'layouts/master' /}")
+        #f_dust.write("{<body}")
+        #f_dust.write(html_page)
+        #f_dust.write("{/body}")
 
-        f_js = open(js_filename,'w')
-        j_s.write("'use strict;'")
-        j_s.write("module.exports = function (app) { app.get('" + js_path + "', function(req,res){ res.render('" + render_path +"');});};")
-        continue
+        #f_js = open(js_filename,'w')
+        #j_s.write("'use strict;'")
+        #j_s.write("module.exports = function (app) { app.get('" + js_path + "', function(req,res){ res.render('" + render_path +"');});};")
+        #continue
 
-	print "restarting nodemon..."
-	os.chdir(dir_name)
-    	call(["killall","node"])
-    	call(["npm","install"])
-    	call(["nodemon","index.js"])
+	#print "restarting nodemon..."
+	#os.chdir(dir_name)
+    	#call(["killall","node"])
+    	#call(["npm","install"])
+    	#call(["nodemon","index.js"])
         #print "sending email..."
         #sg = sendgrid.SendGridClient(api_user,api_key)
         #message = sendgrid.Mail()
